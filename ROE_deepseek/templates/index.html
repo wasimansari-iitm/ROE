@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent</title>
+</head>
+<body>
+    <h1>AI Agent for Examination Questions</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <label for="question">Question:</label><br>
+        <textarea id="question" name="question" rows="4" cols="50"></textarea><br><br>
+
+        <label for="files">Upload Files:</label><br>
+        <input type="file" id="files" name="files" multiple><br><br>
+
+        <label for="constraints">Constraints:</label><br>
+        <textarea id="constraints" name="constraints" rows="4" cols="50"></textarea><br><br>
+
+        <button type="submit">Submit</button>
+    </form>
+
+    <h2>Result:</h2>
+    <pre id="result"></pre>
+
+    <script>
+        document.querySelector("form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const response = await fetch("/", {
+                method: "POST",
+                body: formData
+            });
+            const result = await response.json();
+            document.getElementById("result").textContent = JSON.stringify(result, null, 2);
+        });
+    </script>
+</body>
+</html>
