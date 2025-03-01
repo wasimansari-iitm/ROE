@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent - Deepseek & Yega</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 600px;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        textarea, input[type="file"], textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            text-align: left;
+        }
+        .attempt {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+        }
+        .attempt h3 {
+            margin: 0;
+            color: #555;
+        }
+        .attempt p {
+            margin: 5px 0;
+            color: #333;
+        }
+        .logo {
+            margin-bottom: 20px;
+        }
+        .logo-svg {
+            background-color: #ffffff; /* Default light mode */
+            border-radius: 5px;
+            padding: 10px;
+        }
+        @media (prefers-color-scheme: dark) {
+            .logo-svg {
+                background-color: #1a1a1a; /* Dark mode */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg class="logo-svg" width="150" height="50" viewBox="0 0 150 50" xmlns="http://www.w3.org/2000/svg">
+                <rect width="150" height="50" fill="transparent" /> <!-- Background rectangle -->
+                <text x="5" y="30" font-family="Arial" font-size="20" font-weight="bold" fill="#007bff">DeepSeek</text>
+                <text x="95" y="30" font-family="Arial" font-size="20" font-weight="bold" fill="#ff6600">Yega</text>
+                <circle cx="85" cy="25" r="5" fill="#007bff"/>
+            </svg>
+        </div>
+        <h1>AI Agent - Deepseek & Yega</h1>
+        <form method="POST" enctype="multipart/form-data">
+            <textarea id="question" name="question" rows="4" placeholder="Enter your question..." required></textarea><br><br>
+            <input type="file" id="files" name="files" multiple><br><br>
+            <textarea id="constraints" name="constraints" rows="2" placeholder="Enter any constraints (optional)"></textarea><br><br>
+            <button type="submit">Submit</button>
+        </form>
+
+        <div class="result">
+            {% if result %}
+                <h2>Results:</h2>
+                {% for attempt in result.attempts %}
+                    <div class="attempt">
+                        <h3>Attempt {{ loop.index }}</h3>
+                        <p><strong>Final Answer:</strong> {{ attempt.final_answer }}</p>
+                        <p><strong>Execution Steps:</strong> {{ attempt.execution_steps }}</p>
+                        <p><strong>Debug Logs:</strong> {{ attempt.debug_logs }}</p>
+                    </div>
+                {% endfor %}
+                {% if result.quality_metrics %}
+                    <div class="metrics">
+                        <h3>Quality Metrics:</h3>
+                        <p><strong>Syntax Errors:</strong> {{ result.quality_metrics.syntax_errors }}</p>
+                        <p><strong>Runtime Errors:</strong> {{ result.quality_metrics.runtime_errors }}</p>
+                        <p><strong>Success Rate:</strong> {{ result.quality_metrics.success_rate }}</p>
+                    </div>
+                {% endif %}
+            {% else %}
+                <p>No results yet. Submit a question to see the results.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        // Function to update the logo background based on the theme
+        function updateLogoTheme() {
+            const logo = document.querySelector('.logo-svg');
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                logo.style.backgroundColor = '#1a1a1a'; // Dark mode
+            } else {
+                logo.style.backgroundColor = '#ffffff'; // Light mode
+            }
+        }
+
+        // Listen for theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateLogoTheme);
+
+        // Initialize the logo theme on page load
+        document.addEventListener('DOMContentLoaded', updateLogoTheme);
+    </script>
+</body>
+</html>

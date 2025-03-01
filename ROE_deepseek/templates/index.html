@@ -4,35 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Agent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        textarea, input, button {
+            width: 100%;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .loading {
+            display: none;
+            color: #007bff;
+        }
+        pre {
+            background: #eee;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: left;
+            overflow-x: auto;
+        }
+    </style>
 </head>
 <body>
-    <h1>AI Agent for Examination Questions</h1>
-    <form method="POST" enctype="multipart/form-data">
-        <label for="question">Question:</label><br>
-        <textarea id="question" name="question" rows="4" cols="50"></textarea><br><br>
+    <div class="container">
+        <h1>AI Agent for Examination Questions</h1>
+        <form id="ai-form" method="POST" enctype="multipart/form-data">
+            <label for="question">Question:</label>
+            <textarea id="question" name="question" rows="4"></textarea>
 
-        <label for="files">Upload Files:</label><br>
-        <input type="file" id="files" name="files" multiple><br><br>
+            <label for="files">Upload Files:</label>
+            <input type="file" id="files" name="files" multiple>
 
-        <label for="constraints">Constraints:</label><br>
-        <textarea id="constraints" name="constraints" rows="4" cols="50"></textarea><br><br>
+            <label for="constraints">Constraints:</label>
+            <textarea id="constraints" name="constraints" rows="4"></textarea>
 
-        <button type="submit">Submit</button>
-    </form>
-
-    <h2>Result:</h2>
-    <pre id="result"></pre>
+            <button type="submit">Submit</button>
+            <p class="loading">Processing...</p>
+        </form>
+        <h2>Result:</h2>
+        <pre id="result">No results yet.</pre>
+    </div>
 
     <script>
-        document.querySelector("form").addEventListener("submit", async (e) => {
+        document.getElementById("ai-form").addEventListener("submit", async (e) => {
             e.preventDefault();
+            document.querySelector(".loading").style.display = "block";
             const formData = new FormData(e.target);
-            const response = await fetch("/", {
-                method: "POST",
-                body: formData
-            });
-            const result = await response.json();
-            document.getElementById("result").textContent = JSON.stringify(result, null, 2);
+            try {
+                const response = await fetch("/", {
+                    method: "POST",
+                    body: formData
+                });
+                const result = await response.json();
+                document.getElementById("result").textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                document.getElementById("result").textContent = "Error processing request.";
+            }
+            document.querySelector(".loading").style.display = "none";
         });
     </script>
 </body>

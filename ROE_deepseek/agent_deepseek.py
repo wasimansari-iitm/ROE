@@ -7,7 +7,6 @@ from datetime import datetime
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import ast  # For syntax validation
-import asyncio  # For asynchronous execution
 from flask import Flask, request, jsonify, render_template  # Import Flask and related modules
 
 # API endpoints
@@ -65,7 +64,21 @@ class AIAgent:
             print(f"Syntax Error: {e}")
             return False
 
-    async def solve_question(self, question, files=None, constraints=None):
+    def _adapt_solution_plan(self, solution_plan, error_message):
+        """
+        Adapts the solution plan based on the error encountered during execution.
+        :param solution_plan: The current solution plan.
+        :param error_message: The error message from the failed execution.
+        :return: Updated solution plan.
+        """
+        messages = [
+            {"role": "system", "content": "You are an intelligent AI agent designed to solve complex examination-style questions."},
+            {"role": "user", "content": f"Adapt the following solution plan based on the error encountered: {solution_plan}. Error: {error_message}"}
+        ]
+        response = self.chat_completion(messages)
+        return response['choices'][0]['message']['content']
+
+    def solve_question(self, question, files=None, constraints=None):
         """
         Solves a given question using the AI agent.
         :param question: The question to solve (plain text).
@@ -74,36 +87,62 @@ class AIAgent:
         :return: Final answer, execution steps, and debug logs.
         """
         try:
+            # Initialize variables
+            execution_result = None
+            debug_logs = "No errors encountered."
+            solution_plan = None
+            generated_code = None
+
             # Step 1: Identify the task type and extract key parameters
-            task_description = await self._identify_task(question)
+            task_description = self._identify_task(question)
             print(f"Identified Task: {task_description}")
 
             # Step 2: Plan the solution
-            solution_plan = await self._plan_solution(task_description, files, constraints)
+            solution_plan = self._plan_solution(task_description, files, constraints)
             print(f"Solution Plan: {solution_plan}")
 
-            # Step 3: Generate and execute code
+            # Step 3: Generate and execute code with adaptive retries
             for attempt in range(self.max_retries):
-                generated_code = await self._generate_code(solution_plan)
-                print(f"Generated Code (Attempt {attempt + 1}): {generated_code}")
+                print(f"Attempt {attempt + 1} of {self.max_retries}")
+
+                # Generate code based on the current solution plan
+                generated_code = self._generate_code(solution_plan)
+                print(f"Generated Code: {generated_code}")
 
                 # Validate syntax before execution
                 if not self._validate_syntax(generated_code):
-                    print("Syntax error detected. Regenerating code...")
-                    continue
+                    debug_logs = "Syntax error detected. Regenerating code..."
+                    print(debug_logs)
+                    continue  # Skip execution and retry
 
-                execution_result = await self._execute_code(generated_code, files)
+                # Execute the code
+                execution_result = self._execute_code(generated_code, files)
                 print(f"Execution Result: {execution_result}")
 
-                # Step 4: Debug and verify
+                # Step 4: Analyze the result and adapt if necessary
                 if "error" in execution_result.lower():
-                    debug_logs = await self._debug_code(generated_code, execution_result)
+                    debug_logs = self._debug_code(generated_code, execution_result)
                     print(f"Debug Logs: {debug_logs}")
+
+                    # Analyze the error and adapt the solution plan
+                    if "syntax error" in execution_result.lower():
+                        # Syntax errors are handled by regenerating code
+                        continue
+                    elif "logical error" in execution_result.lower():
+                        # Logical errors require adjusting the solution plan
+                        solution_plan = self._adapt_solution_plan(solution_plan, execution_result)
+                        print(f"Adapted Solution Plan: {solution_plan}")
+                    else:
+                        # Unknown errors: retry with the same plan
+                        continue
                 else:
+                    # Execution succeeded
                     debug_logs = "No errors encountered."
                     break  # Exit retry loop if execution is successful
             else:
+                # If all retries fail, provide a meaningful error message
                 debug_logs = "Max retries reached. Unable to execute code successfully."
+                execution_result = "Execution failed after maximum retries. Please review the debug logs."
 
             # Step 5: Return the final answer
             final_answer = self._format_final_answer(execution_result, solution_plan, debug_logs)
@@ -118,7 +157,7 @@ class AIAgent:
                 "Debug Logs": debug_logs
             }
 
-    async def _identify_task(self, question):
+    def _identify_task(self, question):
         """
         Identifies the task type and extracts key parameters.
         """
@@ -129,7 +168,7 @@ class AIAgent:
         response = self.chat_completion(messages)
         return response['choices'][0]['message']['content']
 
-    async def _plan_solution(self, task_description, files, constraints):
+    def _plan_solution(self, task_description, files, constraints):
         """
         Plans the solution by breaking the problem into logical steps.
         """
@@ -140,7 +179,7 @@ class AIAgent:
         response = self.chat_completion(messages)
         return response['choices'][0]['message']['content']
 
-    async def _generate_code(self, solution_plan):
+    def _generate_code(self, solution_plan):
         """
         Generates Python code to perform the required tasks.
         """
@@ -151,7 +190,7 @@ class AIAgent:
         response = self.chat_completion(messages)
         return response['choices'][0]['message']['content']
 
-    async def _execute_code(self, generated_code, files):
+    def _execute_code(self, generated_code, files):
         """
         Executes the generated Python code.
         """
@@ -164,7 +203,7 @@ class AIAgent:
         except Exception as e:
             return f"Error during execution: {str(e)}"
 
-    async def _debug_code(self, generated_code, error_message):
+    def _debug_code(self, generated_code, error_message):
         """
         Debugs the generated code if an error occurs.
         """
@@ -185,33 +224,29 @@ class AIAgent:
             "Debug Logs": debug_logs
         }
 
-
-from quart import Quart, request, jsonify, render_template
-
-app = Quart(__name__)
+app = Flask(__name__)
 agent = AIAgent()
 
 @app.route("/", methods=["GET", "POST"])
-async def index():
+def index():
     if request.method == "POST":
         # Get user inputs
-        form = await request.form
-        question = form.get("question")
-        files = await request.files.getlist("files")
-        constraints = form.get("constraints")
+        question = request.form.get("question")
+        files = request.files.getlist("files")
+        constraints = request.form.get("constraints")
 
         # Save uploaded files
         file_paths = []
         for file in files:
             file_path = os.path.join("uploads", file.filename)
-            await file.save(file_path)
+            file.save(file_path)
             file_paths.append(file_path)
 
-        # Solve the question (asynchronous call)
-        result = await agent.solve_question(question, file_paths, constraints)
+        # Solve the question
+        result = agent.solve_question(question, file_paths, constraints)
         return jsonify(result)
 
-    return await render_template("index.html")
+    return render_template("index.html")
 
 if __name__ == "__main__":
     os.makedirs("uploads", exist_ok=True)
